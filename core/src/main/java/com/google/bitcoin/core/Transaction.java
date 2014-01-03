@@ -75,6 +75,7 @@ public class Transaction extends ChildMessage implements Serializable {
 
     // These are serialized in both bitcoin and java serialization.
     private long version;
+    private long time;//Peercoin
     private ArrayList<TransactionInput> inputs;
     private ArrayList<TransactionOutput> outputs;
 
@@ -513,7 +514,8 @@ public class Transaction extends ChildMessage implements Serializable {
         cursor = offset;
 
         version = readUint32();
-        optimalEncodingMessageSize = 4;
+        time = readUint32();//Peercoin
+        optimalEncodingMessageSize = 8;//Peercoin
 
         // First come the inputs.
         long numInputs = readVarInt();

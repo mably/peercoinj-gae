@@ -193,7 +193,7 @@ public class BitcoinSerializer {
         try {
             return makeMessage(header.command, header.size, payloadBytes, hash, header.checksum);
         } catch (Exception e) {
-            throw new ProtocolException("Error deserializing message " + Utils.bytesToHexString(payloadBytes) + "\n", e);
+            throw new ProtocolException("Error deserializing message " + Utils.bytesToHexString(header.header)+ "\n" + Utils.bytesToHexString(payloadBytes) + "\n", e);
         }
     }
 
@@ -237,6 +237,8 @@ public class BitcoinSerializer {
             return new NotFoundMessage(params, payloadBytes);
         } else if (command.equals("mempool")) {
             return new MemoryPoolMessage();
+        } else if (command.equals("checkpoint")) {//Peercoin
+            return new CheckpointMessage(params, payloadBytes);
         } else {
             log.warn("No support for deserializing message with name {}", command);
             return new UnknownMessage(params, command, payloadBytes);

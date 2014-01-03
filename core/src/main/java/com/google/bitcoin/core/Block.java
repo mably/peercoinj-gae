@@ -53,6 +53,7 @@ public class Block extends Message {
     private static final long serialVersionUID = 2738848929966035281L;
 
     /** How many bytes are required to represent a block header WITHOUT the trailing 00 length byte. */
+    public static final int BLOCK_SIG_SIZE = 70;
     public static final int HEADER_SIZE = 80;
 
     static final long ALLOWED_TIME_DRIFT = 2 * 60 * 60; // Same value as official client.
@@ -83,6 +84,8 @@ public class Block extends Message {
 
     /** If null, it means this object holds only the headers. */
     List<Transaction> transactions;
+
+    private byte[] blockSig;//Peercoin
 
     /** Stores the hash of the block. If null, getHash() will recalculate it. */
     private transient Sha256Hash hash;
@@ -219,6 +222,7 @@ public class Block extends Message {
             cursor += tx.getMessageSize();
             optimalEncodingMessageSize += tx.getOptimalEncodingMessageSize();
         }
+        //TODO blockSig = readByteArray();//Peercoin
         // No need to set length here. If length was not provided then it should be set at the end of parseLight().
         // If this is a genuine lazy parse then length must have been provided to the constructor.
         transactionsParsed = true;

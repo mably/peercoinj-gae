@@ -336,6 +336,8 @@ public class Peer {
                 sendMessage(new Pong(((Ping) m).getNonce()));
         } else if (m instanceof Pong) {
             processPong((Pong)m);
+        } else if (m instanceof CheckpointMessage) {//Peercoin
+
         } else {
             log.warn("Received unhandled message: {}", m);
         }

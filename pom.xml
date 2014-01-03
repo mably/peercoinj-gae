@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.google</groupId>
-  <artifactId>bitcoinj-parent</artifactId>
+  <artifactId>peercoinj-parent</artifactId>
   <version>0.11-SNAPSHOT</version>
   <packaging>pom</packaging>
 
