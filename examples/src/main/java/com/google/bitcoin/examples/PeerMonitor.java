@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 Google Inc.
+ * Copyright 2014 Andreas Schildbach
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ import com.google.bitcoin.core.AbstractPeerEventListener;
 import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Peer;
 import com.google.bitcoin.core.PeerGroup;
-import com.google.bitcoin.discovery.DnsDiscovery;
+import com.google.bitcoin.net.discovery.DnsDiscovery;
 import com.google.bitcoin.params.MainNetParams;
 import com.google.bitcoin.utils.BriefLogFormatter;
 import com.google.common.collect.Lists;
@@ -57,7 +58,7 @@ public class PeerMonitor {
     public PeerMonitor() {
         setupNetwork();
         setupGUI();
-        peerGroup.start();
+        peerGroup.startAsync();
     }
 
     private void setupNetwork() {
@@ -113,7 +114,8 @@ public class PeerMonitor {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
                 System.out.println("Shutting down ...");
-                peerGroup.stopAndWait();
+                peerGroup.stopAsync();
+                peerGroup.awaitTerminated();
                 System.out.println("Shutdown complete.");
                 System.exit(0);
             }

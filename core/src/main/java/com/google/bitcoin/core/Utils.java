@@ -1,5 +1,6 @@
 /**
  * Copyright 2011 Google Inc.
+ * Copyright 2014 Andreas Schildbach
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +31,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 
 /**
  * A collection of various utility methods that are helpful for working with the Bitcoin protocol.
@@ -71,6 +76,7 @@ public class Utils {
      * of them in a coin (whereas one would expect 1 billion).
      */
     public static final BigInteger CENT = new BigInteger("1000000", 10);
+    private static BlockingQueue<Boolean> mockSleepQueue;
 
     /**
      * Convert an amount expressed in the way humans are used to into nanocoins.
@@ -115,7 +121,7 @@ public class Utils {
      */
     public static BigInteger toNanoCoins(String coins) {
         BigInteger bigint = new BigDecimal(coins).movePointRight(8).toBigIntegerExact();
-        if (bigint.compareTo(BigInteger.ZERO) < 0)
+        if (bigint.signum() < 0)
             throw new ArithmeticException("Negative coins specified");
         if (bigint.compareTo(NetworkParameters.MAX_MONEY) > 0)
             throw new ArithmeticException("Amount larger than the total quantity of Bitcoins possible specified.");
@@ -326,7 +332,7 @@ public class Utils {
      */
     public static String bitcoinValueToFriendlyString(BigInteger value) {
         // TODO: This API is crap. This method should go away when we encapsulate money values.
-        boolean negative = value.compareTo(BigInteger.ZERO) < 0;
+        boolean negative = value.signum() < 0;
         if (negative)
             value = value.negate();
         BigDecimal bd = new BigDecimal(value, 8);
@@ -399,7 +405,7 @@ public class Utils {
             else
                 return new byte[] {0x00, 0x00, 0x00, 0x00};
         }
-        boolean isNegative = value.compareTo(BigInteger.ZERO) < 0;
+        boolean isNegative = value.signum() < 0;
         if (isNegative)
             value = value.negate();
         byte[] array = value.toByteArray();
@@ -447,15 +453,28 @@ public class Utils {
      * Advances (or rewinds) the mock clock by the given number of seconds.
      */
     public static Date rollMockClock(int seconds) {
+        return rollMockClockMillis(seconds * 1000);
+    }
+
+    /**
+     * Advances (or rewinds) the mock clock by the given number of milliseconds.
+     */
+    public static Date rollMockClockMillis(long millis) {
         if (mockTime == null)
-            mockTime = new Date();
-        mockTime = new Date(mockTime.getTime() + (seconds * 1000));
+            throw new IllegalStateException("You need to use setMockClock() first.");
+        mockTime = new Date(mockTime.getTime() + millis);
         return mockTime;
     }
 
     /**
-     * Sets the mock clock to the given time (in seconds)
-     * @param mockClock
+     * Sets the mock clock to the current time.
+     */
+    public static void setMockClock() {
+        mockTime = new Date();
+    }
+
+    /**
+     * Sets the mock clock to the given time (in seconds).
      */
     public static void setMockClock(long mockClock) {
         mockTime = new Date(mockClock * 1000);
@@ -470,7 +489,20 @@ public class Utils {
         else
             return new Date();
     }
-    
+
+    // TODO: Replace usages of this where the result is / 1000 with currentTimeSeconds.
+    /** Returns the current time in milliseconds since the epoch, or a mocked out equivalent. */
+    public static long currentTimeMillis() {
+        if (mockTime != null)
+            return mockTime.getTime();
+        else
+            return System.currentTimeMillis();
+    }
+
+    public static long currentTimeSeconds() {
+        return currentTimeMillis() / 1000;
+    }
+
     public static byte[] copyOf(byte[] in, int length) {
         byte[] out = new byte[length];
         System.arraycopy(in, 0, out, 0, Math.min(length, in.length));
@@ -538,5 +570,43 @@ public class Utils {
     // Sets the given bit in data to one
     public static void setBitLE(byte[] data, int index) {
         data[index >>> 3] |= bitMask[7 & index];
+    }
+
+    /** Sleep for a span of time, or mock sleep if enabled */
+    public static void sleep(long millis) {
+        if (mockSleepQueue == null) {
+            sleepUninterruptibly(millis, TimeUnit.MILLISECONDS);
+        } else {
+            try {
+                boolean isMultiPass = mockSleepQueue.take();
+                rollMockClockMillis(millis);
+                if (isMultiPass)
+                    mockSleepQueue.offer(true);
+            } catch (InterruptedException e) {
+                // Ignored.
+            }
+        }
+    }
+
+    /** Enable or disable mock sleep.  If enabled, set mock time to current time. */
+    public static void setMockSleep(boolean isEnable) {
+        if (isEnable) {
+            mockSleepQueue = new ArrayBlockingQueue<Boolean>(1);
+            mockTime = new Date(System.currentTimeMillis());
+        } else {
+            mockSleepQueue = null;
+        }
+    }
+
+    /** Let sleeping thread pass the synchronization point.  */
+    public static void passMockSleep() {
+        mockSleepQueue.offer(false);
+    }
+
+    /** Let the sleeping thread pass the synchronization point any number of times. */
+    public static void finishMockSleep() {
+        if (mockSleepQueue != null) {
+            mockSleepQueue.offer(true);
+        }
     }
 }

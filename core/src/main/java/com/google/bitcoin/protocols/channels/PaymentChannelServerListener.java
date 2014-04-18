@@ -1,5 +1,6 @@
 /*
  * Copyright 2013 Google Inc.
+ * Copyright 2014 Andreas Schildbach
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +17,20 @@
 
 package com.google.bitcoin.protocols.channels;
 
+import com.google.bitcoin.core.Sha256Hash;
+import com.google.bitcoin.core.TransactionBroadcaster;
+import com.google.bitcoin.core.Wallet;
+import com.google.bitcoin.net.NioServer;
+import com.google.bitcoin.net.ProtobufParser;
+import com.google.bitcoin.net.StreamParserFactory;
+import org.bitcoin.paymentchannel.Protos;
+
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import com.google.bitcoin.core.Sha256Hash;
-import com.google.bitcoin.core.TransactionBroadcaster;
-import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.protocols.niowrapper.NioServer;
-import com.google.bitcoin.protocols.niowrapper.ProtobufParser;
-import com.google.bitcoin.protocols.niowrapper.StreamParserFactory;
-import org.bitcoin.paymentchannel.Protos;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -48,7 +48,8 @@ public class PaymentChannelServerListener {
     private final HandlerFactory eventHandlerFactory;
     private final BigInteger minAcceptedChannelSize;
 
-    private final NioServer server;
+    private NioServer server;
+    private final int timeoutSeconds;
 
     /**
      * A factory which generates connection-specific event handlers.
@@ -119,7 +120,7 @@ public class PaymentChannelServerListener {
         private PaymentChannelCloseException.CloseReason closeReason;
 
         // The user-provided event handler
-        @Nonnull private ServerConnectionEventHandler eventHandler;
+        private ServerConnectionEventHandler eventHandler;
 
         // The payment channel server which does the actual payment channel handling
         private final PaymentChannelServer paymentChannelManager;
@@ -136,7 +137,14 @@ public class PaymentChannelServerListener {
      * @throws Exception If binding to the given port fails (eg SocketException: Permission denied for privileged ports)
      */
     public void bindAndStart(int port) throws Exception {
-        server.start(new InetSocketAddress(port));
+        server = new NioServer(new StreamParserFactory() {
+            @Override
+            public ProtobufParser getNewParser(InetAddress inetAddress, int port) {
+                return new ServerHandler(new InetSocketAddress(inetAddress, port), timeoutSeconds).socketProtobufHandler;
+            }
+        }, new InetSocketAddress(port));
+        server.startAsync();
+        server.awaitRunning();
     }
 
     /**
@@ -159,13 +167,7 @@ public class PaymentChannelServerListener {
         this.broadcaster = checkNotNull(broadcaster);
         this.eventHandlerFactory = checkNotNull(eventHandlerFactory);
         this.minAcceptedChannelSize = checkNotNull(minAcceptedChannelSize);
-
-        server = new NioServer(new StreamParserFactory() {
-            @Override
-            public ProtobufParser getNewParser(InetAddress inetAddress, int port) {
-                return new ServerHandler(new InetSocketAddress(inetAddress, port), timeoutSeconds).socketProtobufHandler;
-            }
-        });
+        this.timeoutSeconds = timeoutSeconds;
     }
 
     /**
@@ -176,10 +178,7 @@ public class PaymentChannelServerListener {
      * wallet.</p>
      */
     public void close() {
-        try {
-            server.stop();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        server.stopAsync();
+        server.awaitTerminated();
     }
 }

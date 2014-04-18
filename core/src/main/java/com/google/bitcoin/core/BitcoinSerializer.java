@@ -21,9 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,7 +37,7 @@ import static com.google.bitcoin.core.Utils.*;
  * <p>To be able to serialize and deserialize new Message subclasses the following criteria needs to be met.</p>
  *
  * <ul>
- * <li>The proper Class instance needs to be mapped to it's message name in the names variable below</li>
+ * <li>The proper Class instance needs to be mapped to its message name in the names variable below</li>
  * <li>There needs to be a constructor matching: NetworkParameters params, byte[] payload</li>
  * <li>Message.bitcoinSerializeToStream() needs to be properly subclassed</li>
  * </ul>
@@ -69,6 +70,7 @@ public class BitcoinSerializer {
         names.put(FilteredBlock.class, "merkleblock");
         names.put(NotFoundMessage.class, "notfound");
         names.put(MemoryPoolMessage.class, "mempool");
+        names.put(RejectMessage.class, "reject");
     }
 
     /**
@@ -129,9 +131,9 @@ public class BitcoinSerializer {
     }
 
     /**
-     * Reads a message from the given InputStream and returns it.
+     * Reads a message from the given ByteBuffer and returns it.
      */
-    public Message deserialize(InputStream in) throws ProtocolException, IOException {
+    public Message deserialize(ByteBuffer in) throws ProtocolException, IOException {
         // A Bitcoin protocol message has the following format.
         //
         //   - 4 byte magic number: 0xfabfb5da for the testnet or
@@ -156,7 +158,7 @@ public class BitcoinSerializer {
      * Deserializes only the header in case packet meta data is needed before decoding
      * the payload. This method assumes you have already called seekPastMagicBytes()
      */
-    public BitcoinPacketHeader deserializeHeader(InputStream in) throws ProtocolException, IOException {
+    public BitcoinPacketHeader deserializeHeader(ByteBuffer in) throws ProtocolException, IOException {
         return new BitcoinPacketHeader(in);
     }
 
@@ -164,16 +166,9 @@ public class BitcoinSerializer {
      * Deserialize payload only.  You must provide a header, typically obtained by calling
      * {@link BitcoinSerializer#deserializeHeader}.
      */
-    public Message deserializePayload(BitcoinPacketHeader header, InputStream in) throws ProtocolException, IOException {
-        int readCursor = 0;
+    public Message deserializePayload(BitcoinPacketHeader header, ByteBuffer in) throws ProtocolException, BufferUnderflowException {
         byte[] payloadBytes = new byte[header.size];
-        while (readCursor < payloadBytes.length - 1) {
-            int bytesRead = in.read(payloadBytes, readCursor, header.size - readCursor);
-            if (bytesRead == -1) {
-                throw new IOException("Socket is disconnected");
-            }
-            readCursor += bytesRead;
-        }
+        in.get(payloadBytes, 0, header.size);
 
         // Verify the checksum.
         byte[] hash;
@@ -239,6 +234,8 @@ public class BitcoinSerializer {
             return new MemoryPoolMessage();
         } else if (command.equals("checkpoint")) {//Peercoin
             return new CheckpointMessage(params, payloadBytes);
+        } else if (command.equals("reject")) {
+            return new RejectMessage(params, payloadBytes);
         } else {
             log.warn("No support for deserializing message with name {}", command);
             return new UnknownMessage(params, command, payloadBytes);
@@ -248,17 +245,13 @@ public class BitcoinSerializer {
         return message;
     }
 
-    public void seekPastMagicBytes(InputStream in) throws IOException {
+    public void seekPastMagicBytes(ByteBuffer in) throws BufferUnderflowException {
         int magicCursor = 3;  // Which byte of the magic we're looking for currently.
         while (true) {
-            int b = in.read();  // Read a byte.
-            if (b == -1) {
-                // There's no more data to read.
-                throw new IOException("Socket is disconnected");
-            }
+            byte b = in.get();
             // We're looking for a run of bytes that is the same as the packet magic but we want to ignore partial
             // magics that aren't complete. So we keep track of where we're up to with magicCursor.
-            int expectedByte = 0xFF & (int) (params.getPacketMagic() >>> (magicCursor * 8));
+            byte expectedByte = (byte)(0xFF & params.getPacketMagic() >>> (magicCursor * 8));
             if (b == expectedByte) {
                 magicCursor--;
                 if (magicCursor < 0) {
@@ -289,37 +282,31 @@ public class BitcoinSerializer {
 
 
     public static class BitcoinPacketHeader {
+        /** The largest number of bytes that a header can represent */
+        public static final int HEADER_LENGTH = COMMAND_LEN + 4 + 4;
+
         public final byte[] header;
         public final String command;
         public final int size;
         public final byte[] checksum;
 
-        public BitcoinPacketHeader(InputStream in) throws ProtocolException, IOException {
-            header = new byte[COMMAND_LEN + 4 + 4];
-            int readCursor = 0;
-            while (readCursor < header.length) {
-                int bytesRead = in.read(header, readCursor, header.length - readCursor);
-                if (bytesRead == -1) {
-                    // There's no more data to read.
-                    throw new IOException("Incomplete packet in underlying stream");
-                }
-                readCursor += bytesRead;
-            }
+        public BitcoinPacketHeader(ByteBuffer in) throws ProtocolException, BufferUnderflowException {
+            header = new byte[HEADER_LENGTH];
+            in.get(header, 0, header.length);
 
             int cursor = 0;
 
             // The command is a NULL terminated string, unless the command fills all twelve bytes
             // in which case the termination is implicit.
-            int mark = cursor;
-            for (; header[cursor] != 0 && cursor - mark < COMMAND_LEN; cursor++) ;
-            byte[] commandBytes = new byte[cursor - mark];
-            System.arraycopy(header, mark, commandBytes, 0, cursor - mark);
+            for (; header[cursor] != 0 && cursor < COMMAND_LEN; cursor++) ;
+            byte[] commandBytes = new byte[cursor];
+            System.arraycopy(header, 0, commandBytes, 0, cursor);
             try {
                 command = new String(commandBytes, "US-ASCII");
             } catch (UnsupportedEncodingException e) {
                 throw new RuntimeException(e);  // Cannot happen.
             }
-            cursor = mark + COMMAND_LEN;
+            cursor = COMMAND_LEN;
 
             size = (int) readUint32(header, cursor);
             cursor += 4;

@@ -26,11 +26,11 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.math.BigInteger;
+import java.util.Arrays;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * A TransactionOutput message contains a scriptPubKey that controls who is able to spend its value. It is a sub-part
@@ -46,23 +46,23 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     private byte[] scriptBytes;
 
     // The script bytes are parsed and turned into a Script on demand.
-    private transient Script scriptPubKey;
+    private transient WeakReference<Script> scriptPubKey;
 
     // These fields are Java serialized but not Bitcoin serialized. They are used for tracking purposes in our wallet
     // only. If set to true, this output is counted towards our balance. If false and spentBy is null the tx output
     // was owned by us and was sent to somebody else. If false and spentBy is set it means this output was owned by
     // us and used in one of our own transactions (eg, because it is a change output).
     private boolean availableForSpending;
-    private TransactionInput spentBy;
+    @Nullable private TransactionInput spentBy;
 
-    // A reference to the transaction which holds this output.
-    Transaction parentTransaction;
+    // A reference to the transaction which holds this output, if any.
+    @Nullable Transaction parentTransaction;
     private transient int scriptLen;
 
     /**
      * Deserializes a transaction output message. This is usually part of a transaction message.
      */
-    public TransactionOutput(NetworkParameters params, Transaction parent, byte[] payload,
+    public TransactionOutput(NetworkParameters params, @Nullable Transaction parent, byte[] payload,
                              int offset) throws ProtocolException {
         super(params, payload, offset);
         parentTransaction = parent;
@@ -81,7 +81,7 @@ public class TransactionOutput extends ChildMessage implements Serializable {
      * the cached bytes may be repopulated and retained if the message is serialized again in the future.
      * @throws ProtocolException
      */
-    public TransactionOutput(NetworkParameters params, Transaction parent, byte[] msg, int offset,
+    public TransactionOutput(NetworkParameters params, @Nullable Transaction parent, byte[] msg, int offset,
                              boolean parseLazy, boolean parseRetain) throws ProtocolException {
         super(params, msg, offset, parent, parseLazy, parseRetain, UNKNOWN_LENGTH);
         parentTransaction = parent;
@@ -93,7 +93,7 @@ public class TransactionOutput extends ChildMessage implements Serializable {
      * something like {@link Utils#toNanoCoins(int, int)}. Typically you would use
      * {@link Transaction#addOutput(java.math.BigInteger, Address)} instead of creating a TransactionOutput directly.
      */
-    public TransactionOutput(NetworkParameters params, Transaction parent, BigInteger value, Address to) {
+    public TransactionOutput(NetworkParameters params, @Nullable Transaction parent, BigInteger value, Address to) {
         this(params, parent, value, ScriptBuilder.createOutputScript(to).getProgram());
     }
 
@@ -102,15 +102,15 @@ public class TransactionOutput extends ChildMessage implements Serializable {
      * amount should be created with something like {@link Utils#toNanoCoins(int, int)}. Typically you would use
      * {@link Transaction#addOutput(java.math.BigInteger, ECKey)} instead of creating an output directly.
      */
-    public TransactionOutput(NetworkParameters params, Transaction parent, BigInteger value, ECKey to) {
+    public TransactionOutput(NetworkParameters params, @Nullable Transaction parent, BigInteger value, ECKey to) {
         this(params, parent, value, ScriptBuilder.createOutputScript(to).getProgram());
     }
 
-    public TransactionOutput(NetworkParameters params, Transaction parent, BigInteger value, byte[] scriptBytes) {
+    public TransactionOutput(NetworkParameters params, @Nullable Transaction parent, BigInteger value, byte[] scriptBytes) {
         super(params);
         // Negative values obviously make no sense, except for -1 which is used as a sentinel value when calculating
         // SIGHASH_SINGLE signatures, so unfortunately we have to allow that here.
-        checkArgument(value.compareTo(BigInteger.ZERO) >= 0 || value.equals(Utils.NEGATIVE_ONE), "Negative values not allowed");
+        checkArgument(value.signum() >= 0 || value.equals(Utils.NEGATIVE_ONE), "Negative values not allowed");
         checkArgument(value.compareTo(NetworkParameters.MAX_MONEY) < 0, "Values larger than MAX_MONEY not allowed");
         this.value = value;
         this.scriptBytes = scriptBytes;
@@ -120,11 +120,17 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     }
 
     public Script getScriptPubKey() throws ScriptException {
-        if (scriptPubKey == null) {
+        // Quick hack to try and reduce memory consumption on Androids. SoftReference is the same as WeakReference
+        // on Dalvik (by design), so this arrangement just means that we can avoid the cost of re-parsing the script
+        // bytes if getScriptPubKey is called multiple times in quick succession in between garbage collections.
+        Script script = scriptPubKey == null ? null : scriptPubKey.get();
+        if (script == null) {
             maybeParse();
-            scriptPubKey = new Script(scriptBytes);
+            script = new Script(scriptBytes);
+            scriptPubKey = new WeakReference<Script>(script);
+            return script;
         }
-        return scriptPubKey;
+        return script;
     }
 
     protected void parseLite() throws ProtocolException {
@@ -169,7 +175,7 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     }
 
     int getIndex() {
-        checkNotNull(parentTransaction);
+        checkNotNull(parentTransaction, "This output is not attached to a parent transaction.");
         for (int i = 0; i < parentTransaction.getOutputs().size(); i++) {
             if (parentTransaction.getOutputs().get(i) == this)
                 return i;
@@ -251,6 +257,27 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     }
 
     /**
+     * Returns true if this output is to a key in the wallet or to an address/script we are watching.
+     */
+    public boolean isMineOrWatched(Wallet wallet) {
+        return isMine(wallet) || isWatched(wallet);
+    }
+
+    /**
+     * Returns true if this output is to a key, or an address we have the keys for, in the wallet.
+     */
+    public boolean isWatched(Wallet wallet) {
+        try {
+            Script script = getScriptPubKey();
+            return wallet.isWatchedScript(script);
+        } catch (ScriptException e) {
+            // Just means we didn't understand the output of this transaction: ignore it.
+            log.debug("Could not parse tx output script: {}", e.toString());
+            return false;
+        }
+    }
+
+    /**
      * Returns true if this output is to a key, or an address we have the keys for, in the wallet.
      */
     public boolean isMine(Wallet wallet) {
@@ -285,16 +312,16 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     /**
      * Returns the connected input.
      */
+    @Nullable
     public TransactionInput getSpentBy() {
         return spentBy;
     }
 
     /**
-     * Returns the transaction that owns this output, or null if this is a free standing object.
+     * Returns the transaction that owns this output, or throws NullPointerException if unowned.
      */
-    @Nullable
     public Transaction getParentTransaction() {
-        return parentTransaction;
+        return checkNotNull(parentTransaction, "Free-standing TransactionOutput");
     }
 
     /**
@@ -305,5 +332,31 @@ public class TransactionOutput extends ChildMessage implements Serializable {
     private void writeObject(ObjectOutputStream out) throws IOException {
         maybeParse();
         out.defaultWriteObject();
+    }
+
+    /** Returns a copy of the output detached from its containing transaction, if need be. */
+    public TransactionOutput duplicateDetached() {
+        return new TransactionOutput(params, null, value, org.spongycastle.util.Arrays.clone(scriptBytes));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TransactionOutput output = (TransactionOutput) o;
+
+        if (!Arrays.equals(scriptBytes, output.scriptBytes)) return false;
+        if (value != null ? !value.equals(output.value) : output.value != null) return false;
+        if (parentTransaction != null && parentTransaction != output.parentTransaction) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = value != null ? value.hashCode() : 0;
+        result = 31 * result + (scriptBytes != null ? Arrays.hashCode(scriptBytes) : 0);
+        return result;
     }
 }

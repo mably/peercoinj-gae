@@ -1,3 +1,20 @@
+/**
+ * Copyright 2012 Google Inc.
+ * Copyright 2014 Andreas Schildbach
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.google.bitcoin.store;
 
 
@@ -5,6 +22,7 @@ import com.google.bitcoin.core.*;
 import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
 import com.google.bitcoin.params.MainNetParams;
 import com.google.bitcoin.params.UnitTestParams;
+import com.google.bitcoin.script.ScriptBuilder;
 import com.google.bitcoin.utils.BriefLogFormatter;
 import com.google.bitcoin.utils.TestUtils;
 import com.google.bitcoin.utils.Threading;
@@ -18,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -27,19 +46,24 @@ import static org.junit.Assert.*;
 public class WalletProtobufSerializerTest {
     static final NetworkParameters params = UnitTestParams.get();
     private ECKey myKey;
+    private ECKey myWatchedKey;
     private Address myAddress;
     private Wallet myWallet;
 
     public static String WALLET_DESCRIPTION  = "The quick brown fox lives in \u4f26\u6566"; // Beijing in Chinese
+    private long mScriptCreationTime;
 
     @Before
     public void setUp() throws Exception {
         BriefLogFormatter.initVerbose();
+        myWatchedKey = new ECKey();
         myKey = new ECKey();
         myKey.setCreationTimeSeconds(123456789L);
         myAddress = myKey.toAddress(params);
         myWallet = new Wallet(params);
         myWallet.addKey(myKey);
+        mScriptCreationTime = new Date().getTime() / 1000 - 1234;
+        myWallet.addWatchedAddress(myWatchedKey.toAddress(params), mScriptCreationTime);
         myWallet.setDescription(WALLET_DESCRIPTION);
     }
 
@@ -55,6 +79,11 @@ public class WalletProtobufSerializerTest {
                 wallet1.findKeyFromPubHash(myKey.getPubKeyHash()).getPrivKeyBytes());
         assertEquals(myKey.getCreationTimeSeconds(),
                 wallet1.findKeyFromPubHash(myKey.getPubKeyHash()).getCreationTimeSeconds());
+        assertEquals(mScriptCreationTime,
+                wallet1.getWatchedScripts().get(0).getCreationTimeSeconds());
+        assertEquals(1, wallet1.getWatchedScripts().size());
+        assertEquals(ScriptBuilder.createOutputScript(myWatchedKey.toAddress(params)),
+                wallet1.getWatchedScripts().get(0));
         assertEquals(WALLET_DESCRIPTION, wallet1.getDescription());
     }
 
@@ -169,11 +198,11 @@ public class WalletProtobufSerializerTest {
         // Start by building two blocks on top of the genesis block.
         Block b1 = params.getGenesisBlock().createNextBlock(myAddress);
         BigInteger work1 = b1.getWork();
-        assertTrue(work1.compareTo(BigInteger.ZERO) > 0);
+        assertTrue(work1.signum() > 0);
 
         Block b2 = b1.createNextBlock(myAddress);
         BigInteger work2 = b2.getWork();
-        assertTrue(work2.compareTo(BigInteger.ZERO) > 0);
+        assertTrue(work2.signum() > 0);
 
         assertTrue(chain.add(b1));
         assertTrue(chain.add(b2));
@@ -234,6 +263,8 @@ public class WalletProtobufSerializerTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         //System.out.println(WalletProtobufSerializer.walletToText(wallet));
         new WalletProtobufSerializer().writeWallet(wallet, output);
+        ByteArrayInputStream test = new ByteArrayInputStream(output.toByteArray());
+        assertTrue(WalletProtobufSerializer.isWallet(test));
         ByteArrayInputStream input = new ByteArrayInputStream(output.toByteArray());
         return new WalletProtobufSerializer().readWallet(input);
     }

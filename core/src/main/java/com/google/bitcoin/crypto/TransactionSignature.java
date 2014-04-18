@@ -35,17 +35,23 @@ public class TransactionSignature extends ECKey.ECDSASignature {
      * Because Satoshi's code works via bit testing, we must not lose the exact value when round-tripping
      * otherwise we'll fail to verify signature hashes.
      */
-    public int sighashFlags = Transaction.SigHash.ALL.ordinal() + 1;
+    public final int sighashFlags;
 
     /** Constructs a signature with the given components and SIGHASH_ALL. */
     public TransactionSignature(BigInteger r, BigInteger s) {
+        this(r, s, Transaction.SigHash.ALL.ordinal() + 1);
+    }
+
+    /** Constructs a signature with the given components and raw sighash flag bytes (needed for rule compatibility). */
+    public TransactionSignature(BigInteger r, BigInteger s, int sighashFlags) {
         super(r, s);
+        this.sighashFlags = sighashFlags;
     }
 
     /** Constructs a transaction signature based on the ECDSA signature. */
     public TransactionSignature(ECKey.ECDSASignature signature, Transaction.SigHash mode, boolean anyoneCanPay) {
         super(signature.r, signature.s);
-        setSigHash(mode, anyoneCanPay);
+        sighashFlags = calcSigHashValue(mode, anyoneCanPay);
     }
 
     /**
@@ -114,11 +120,6 @@ public class TransactionSignature extends ECKey.ECDSASignature {
         return true;
     }
 
-    /** Configures the sighashFlags field as appropriate. */
-    public void setSigHash(Transaction.SigHash mode, boolean anyoneCanPay) {
-        sighashFlags = calcSigHashValue(mode, anyoneCanPay);
-    }
-
     public boolean anyoneCanPay() {
         return (sighashFlags & Transaction.SIGHASH_ANYONECANPAY_VALUE) != 0;
     }
@@ -148,6 +149,11 @@ public class TransactionSignature extends ECKey.ECDSASignature {
         }
     }
 
+    @Override
+    public ECKey.ECDSASignature toCanonicalised() {
+        return new TransactionSignature(super.toCanonicalised(), sigHashMode(), anyoneCanPay());
+    }
+
     /**
      * Returns a decoded signature.
      * @throws RuntimeException if the signature is invalid or unparseable in some way.
@@ -156,13 +162,14 @@ public class TransactionSignature extends ECKey.ECDSASignature {
         // Bitcoin encoding is DER signature + sighash byte.
         if (requireCanonical && !isEncodingCanonical(bytes))
             throw new VerificationException("Signature encoding is not canonical.");
-        ECKey.ECDSASignature sig = ECKey.ECDSASignature.decodeFromDER(bytes);
-        if (sig == null)
-            throw new VerificationException("Could not decode DER component.");
-        TransactionSignature tsig = new TransactionSignature(sig.r, sig.s);
+        ECKey.ECDSASignature sig;
+        try {
+            sig = ECKey.ECDSASignature.decodeFromDER(bytes);
+        } catch (IllegalArgumentException e) {
+            throw new VerificationException("Could not decode DER", e);
+        }
         // In Bitcoin, any value of the final byte is valid, but not necessarily canonical. See javadocs for
-        // isEncodingCanonical to learn more about this.
-        tsig.sighashFlags = bytes[bytes.length - 1];
-        return tsig;
+        // isEncodingCanonical to learn more about this. So we must store the exact byte found.
+        return new TransactionSignature(sig.r, sig.s, bytes[bytes.length - 1]);
     }
 }

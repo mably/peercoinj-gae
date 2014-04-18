@@ -70,25 +70,20 @@ public class BloomFilter extends Message {
     }
     
     /**
-     * <p>Constructs a new Bloom Filter which will provide approximately the given false positive
-     * rate when the given number of elements have been inserted.</p>
+     * <p>Constructs a new Bloom Filter which will provide approximately the given false positive rate when the given
+     * number of elements have been inserted. If the filter would otherwise be larger than the maximum allowed size,
+     * it will be automatically downsized to the maximum size.</p>
      * 
-     * <p>If the filter would otherwise be larger than the maximum allowed size, it will be
-     * automatically downsized to the maximum size.</p>
+     * <p>To check the theoretical false positive rate of a given filter, use
+     * {@link BloomFilter#getFalsePositiveRate(int)}.</p>
      * 
-     * <p>To check the theoretical false positive rate of a given filter, use {@link BloomFilter#getFalsePositiveRate(int)}</p>
-     * 
-     * <p>The anonymity of which coins are yours to any peer which you send a BloomFilter to is
-     * controlled by the false positive rate.</p>
-     * 
-     * <p>For reference, as of block 187,000, the total number of addresses used in the chain was roughly 4.5 million.</p>
-     * 
-     * <p>Thus, if you use a false positive rate of 0.001 (0.1%), there will be, on average, 4,500 distinct public
-     * keys/addresses which will be thought to be yours by nodes which have your bloom filter, but which are not
-     * actually yours.</p>
-     * 
-     * <p>Keep in mind that a remote node can do a pretty good job estimating the order of magnitude of the false positive
-     * rate of a given filter you provide it when considering the anonymity of a given filter.</p>
+     * <p>The anonymity of which coins are yours to any peer which you send a BloomFilter to is controlled by the
+     * false positive rate. For reference, as of block 187,000, the total number of addresses used in the chain was
+     * roughly 4.5 million. Thus, if you use a false positive rate of 0.001 (0.1%), there will be, on average, 4,500
+     * distinct public keys/addresses which will be thought to be yours by nodes which have your bloom filter, but
+     * which are not actually yours. Keep in mind that a remote node can do a pretty good job estimating the order of
+     * magnitude of the false positive rate of a given filter you provide it when considering the anonymity of a given
+     * filter.</p>
      * 
      * <p>In order for filtered block download to function efficiently, the number of matched transactions in any given
      * block should be less than (with some headroom) the maximum size of the MemoryPool used by the Peer
@@ -98,7 +93,10 @@ public class BloomFilter extends Message {
      * <p>randomNonce is a tweak for the hash function used to prevent some theoretical DoS attacks.
      * It should be a random value, however secureness of the random value is of no great consequence.</p>
      * 
-     * <p>updateFlag is used to control filter behavior</p>
+     * <p>updateFlag is used to control filter behaviour on the server (remote node) side when it encounters a hit.
+     * See {@link com.google.bitcoin.core.BloomFilter.BloomUpdate} for a brief description of each mode. The purpose
+     * of this flag is to reduce network round-tripping and avoid over-dirtying the filter for the most common
+     * wallet configurations.</p>
      */
     public BloomFilter(int elements, double falsePositiveRate, long randomNonce, BloomUpdate updateFlag) {
         // The following formulas were stolen from Wikipedia's page on Bloom Filters (with the addition of min(..., MAX_...))
@@ -129,15 +127,11 @@ public class BloomFilter extends Message {
         data = readByteArray();
         if (data.length > MAX_FILTER_SIZE)
             throw new ProtocolException ("Bloom filter out of size range.");
-        
         hashFuncs = readUint32();
         if (hashFuncs > MAX_HASH_FUNCS)
             throw new ProtocolException("Bloom filter hash function count out of range");
-        
         nTweak = readUint32();
-        
         nFlags = readBytes(1)[0];
-
         length = cursor - offset;
     }
     
@@ -157,7 +151,7 @@ public class BloomFilter extends Message {
         // Do nothing, lazy parsing isn't useful for bloom filters.
     }
 
-    private int ROTL32 (int x, int r) {
+    private static int rotateLeft32(int x, int r) {
         return (x << r) | (x >>> (32 - r));
     }
     
@@ -176,11 +170,11 @@ public class BloomFilter extends Message {
                   ((object[i+3] & 0xFF) << 24);
             
             k1 *= c1;
-            k1 = ROTL32(k1,15);
+            k1 = rotateLeft32(k1, 15);
             k1 *= c2;
 
             h1 ^= k1;
-            h1 = ROTL32(h1,13); 
+            h1 = rotateLeft32(h1, 13);
             h1 = h1*5+0xe6546b64;
         }
         
@@ -195,7 +189,7 @@ public class BloomFilter extends Message {
                 // Fall through.
             case 1:
                 k1 ^= (object[numBlocks] & 0xff);
-                k1 *= c1; k1 = ROTL32(k1,15); k1 *= c2; h1 ^= k1;
+                k1 *= c1; k1 = rotateLeft32(k1, 15); k1 *= c2; h1 ^= k1;
                 // Fall through.
             default:
                 // Do nothing.
@@ -214,8 +208,8 @@ public class BloomFilter extends Message {
     }
     
     /**
-     * Returns true if the given object matches the filter
-     * (either because it was inserted, or because we have a false-positive)
+     * Returns true if the given object matches the filter either because it was inserted, or because we have a
+     * false-positive.
      */
     public boolean contains(byte[] object) {
         for (int i = 0; i < hashFuncs; i++) {
@@ -225,9 +219,7 @@ public class BloomFilter extends Message {
         return true;
     }
     
-    /**
-     * Insert the given arbitrary data into the filter
-     */
+    /** Insert the given arbitrary data into the filter */
     public void insert(byte[] object) {
         for (int i = 0; i < hashFuncs; i++)
             Utils.setBitLE(data, hash(i, object));

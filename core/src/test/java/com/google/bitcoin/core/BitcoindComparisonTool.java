@@ -1,5 +1,6 @@
 /*
  * Copyright 2012 Matt Corallo.
+ * Copyright 2014 Andreas Schildbach
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -127,6 +128,11 @@ public class BitcoindComparisonTool {
                 return 1;
             }
 
+            @Override
+            public boolean isRequiringUpdateAllBloomFilter() {
+                return false;
+            }
+
             @Override public BloomFilter getBloomFilter(int size, double falsePositiveRate, long nTweak) {
                 BloomFilter filter = new BloomFilter(1, 0.99, 0);
                 filter.setMatchAll();
@@ -137,7 +143,7 @@ public class BitcoindComparisonTool {
         bitcoindChainHead = params.getGenesisBlock().getHash();
         
         // Connect to bitcoind and make sure it has no blocks
-        peers.start();
+        peers.startAsync();
         peers.setMaxConnections(1);
         peers.downloadBlockChain();
         

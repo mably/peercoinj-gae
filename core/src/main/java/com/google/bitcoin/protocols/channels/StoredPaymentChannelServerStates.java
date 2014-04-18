@@ -84,7 +84,7 @@ public class StoredPaymentChannelServerStates implements WalletExtension {
             channel.closeConnectedHandler();
             try {
                 channel.getOrCreateState(wallet, broadcaster).close();
-            } catch (ValueOutOfRangeException e) {
+            } catch (InsufficientMoneyException e) {
                 e.printStackTrace();
             } catch (VerificationException e) {
                 e.printStackTrace();
@@ -119,7 +119,7 @@ public class StoredPaymentChannelServerStates implements WalletExtension {
             checkArgument(mapChannels.put(channel.contract.getHash(), checkNotNull(channel)) == null);
             // Add the difference between real time and Utils.now() so that test-cases can use a mock clock.
             Date autocloseTime = new Date((channel.refundTransactionUnlockTimeSecs + CHANNEL_EXPIRE_OFFSET) * 1000L
-                    + (System.currentTimeMillis() - Utils.now().getTime()));
+                    + (System.currentTimeMillis() - Utils.currentTimeMillis()));
             log.info("Scheduling channel for automatic closure at {}: {}", autocloseTime, channel);
             channelTimeoutHandler.schedule(new TimerTask() {
                 @Override
@@ -150,7 +150,7 @@ public class StoredPaymentChannelServerStates implements WalletExtension {
             ServerState.StoredServerPaymentChannels.Builder builder = ServerState.StoredServerPaymentChannels.newBuilder();
             for (StoredServerChannel channel : mapChannels.values()) {
                 // First a few asserts to make sure things won't break
-                checkState(channel.bestValueToMe.compareTo(BigInteger.ZERO) >= 0 && channel.bestValueToMe.compareTo(NetworkParameters.MAX_MONEY) < 0);
+                checkState(channel.bestValueToMe.signum() >= 0 && channel.bestValueToMe.compareTo(NetworkParameters.MAX_MONEY) < 0);
                 checkState(channel.refundTransactionUnlockTimeSecs > 0);
                 checkNotNull(channel.myKey.getPrivKeyBytes());
                 ServerState.StoredServerPaymentChannel.Builder channelBuilder = ServerState.StoredServerPaymentChannel.newBuilder()

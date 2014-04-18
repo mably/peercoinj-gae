@@ -1,20 +1,51 @@
+/**
+ * Copyright 2012 Matt Corallo
+ * Copyright 2014 Andreas Schildbach
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.google.bitcoin.core;
 
 import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
 import com.google.bitcoin.params.UnitTestParams;
 import com.google.bitcoin.store.MemoryBlockStore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.spongycastle.util.encoders.Hex;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(value = Parameterized.class)
 public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
+    @Parameterized.Parameters
+    public static Collection<ClientType[]> parameters() {
+        return Arrays.asList(new ClientType[] {ClientType.NIO_CLIENT_MANAGER},
+                             new ClientType[] {ClientType.BLOCKING_CLIENT_MANAGER});
+    }
+
+    public FilteredBlockAndPartialMerkleTreeTests(ClientType clientType) {
+        super(clientType);
+    }
+
     @Test
     // Simple deserialization sanity check
     public void deserializeFilteredBlock() throws Exception {
@@ -87,10 +118,11 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
         peerGroup.addWallet(wallet);
         blockChain.addWallet(wallet);
 
-        peerGroup.start();
+        peerGroup.startAsync();
+        peerGroup.awaitRunning();
 
         // Create a peer.
-        FakeChannel p1 = connectPeer(1);
+        InboundMessageQueuer p1 = connectPeer(1);
         assertEquals(1, peerGroup.numConnectedPeers());
         // Send an inv for block 100001
         InventoryMessage inv = new InventoryMessage(unitTestParams);
@@ -115,7 +147,9 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
         inbound(p1, tx2);
         inbound(p1, tx3);
         inbound(p1, new Pong(((Ping)ping).getNonce()));
-        
+
+        pingAndWait(p1);
+
         Set<Transaction> transactions = wallet.getTransactions(false);
         assertTrue(transactions.size() == 4);
         for (Transaction tx : transactions) {
@@ -127,6 +161,7 @@ public class FilteredBlockAndPartialMerkleTreeTests extends TestWithPeerGroup {
 
         // Peer 1 goes away.
         closePeer(peerOf(p1));
-        peerGroup.stop();
+        peerGroup.stopAsync();
+        super.tearDown();
     }
 }

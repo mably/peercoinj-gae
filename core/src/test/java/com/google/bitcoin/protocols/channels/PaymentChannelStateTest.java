@@ -106,17 +106,15 @@ public class PaymentChannelStateTest extends TestWithWallet {
         try {
             channelState.initiate();
             fail();
-        } catch (ValueOutOfRangeException e) {
-            assertTrue(e.getMessage().contains("afford"));
+        } catch (InsufficientMoneyException e) {
         }
     }
 
     @Test
     public void basic() throws Exception {
         // Check it all works when things are normal (no attacks, no problems).
-
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeSeconds() + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
@@ -229,8 +227,8 @@ public class PaymentChannelStateTest extends TestWithWallet {
         StoredPaymentChannelClientStates stateStorage = new StoredPaymentChannelClientStates(wallet, mockBroadcaster);
         wallet.addOrUpdateExtension(stateStorage);
 
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeMillis()/1000 + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
@@ -330,9 +328,8 @@ public class PaymentChannelStateTest extends TestWithWallet {
         // Check that if signatures/transactions/etc are corrupted, the protocol rejects them correctly.
 
         // We'll broadcast only one tx: multisig contract
-
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeSeconds() + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
@@ -542,8 +539,8 @@ public class PaymentChannelStateTest extends TestWithWallet {
         chain.add(makeSolvedTestBlock(blockStore.getChainHead().getHeader(), createFakeTx(params, Utils.CENT, myAddress)));
         assertEquals(Utils.CENT, wallet.getBalance());
 
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeMillis()/1000 + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
@@ -645,8 +642,8 @@ public class PaymentChannelStateTest extends TestWithWallet {
     public void serverAddsFeeTest() throws Exception {
         // Test that the server properly adds the necessary fee at the end (or just drops the payment if its not worth it)
 
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeMillis()/1000 + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
@@ -698,8 +695,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         try {
             serverState.close();
             fail();
-        } catch (ValueOutOfRangeException e) {
-            assertTrue(e.getMessage().contains("unable to pay required fee"));
+        } catch (InsufficientMoneyException e) {
         }
 
         // Now give the server enough coins to pay the fee
@@ -711,7 +707,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         try {
             serverState.close();
             fail();
-        } catch (ValueOutOfRangeException e) {
+        } catch (InsufficientMoneyException e) {
             assertTrue(e.getMessage().contains("more in fees"));
         }
 
@@ -732,8 +728,8 @@ public class PaymentChannelStateTest extends TestWithWallet {
         // Tests that if the client double-spends the multisig contract after it is sent, no more payments are accepted
 
         // Start with a copy of basic()....
-        Utils.rollMockClock(0); // Use mock clock
-        final long EXPIRE_TIME = Utils.now().getTime()/1000 + 60*60*24;
+        Utils.setMockClock(); // Use mock clock
+        final long EXPIRE_TIME = Utils.currentTimeSeconds() + 60*60*24;
 
         serverState = new PaymentChannelServerState(mockBroadcaster, serverWallet, serverKey, EXPIRE_TIME);
         assertEquals(PaymentChannelServerState.State.WAITING_FOR_REFUND_TRANSACTION, serverState.getState());
