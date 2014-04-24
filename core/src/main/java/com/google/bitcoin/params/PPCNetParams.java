@@ -53,4 +53,10 @@ public class PPCNetParams extends NetworkParameters {
 		}
 		return instance;
 	}
+
+	@Override
+	public String getPaymentProtocolId() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

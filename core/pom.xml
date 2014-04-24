@@ -21,13 +21,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.google</groupId>
-        <artifactId>bitcoinj-parent</artifactId>
+        <artifactId>peercoinj-parent</artifactId>
         <version>0.12-SNAPSHOT</version>
     </parent>
 
-    <artifactId>bitcoinj</artifactId>
+    <artifactId>peercoinj</artifactId>
 
-    <name>bitcoinj</name>
+    <name>peercoinj</name>
     <description>A Java Bitcoin library</description>
 
     <packaging>jar</packaging>
