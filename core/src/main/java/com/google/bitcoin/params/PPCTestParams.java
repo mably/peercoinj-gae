@@ -7,34 +7,41 @@ import org.spongycastle.util.encoders.Hex;
 import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Utils;
 
-public class PPCNetParams extends NetworkParameters {
-	public PPCNetParams() {
+public class PPCTestParams extends NetworkParameters {
+	public PPCTestParams() {
 
 		super();
 		interval = INTERVAL;
 		targetTimespan = TARGET_TIMESPAN;
 		proofOfWorkLimit = Utils.decodeCompactBits(0x1d00ffffL);
-		addressHeader = 55;
-		p2shHeader = 117;
+		addressHeader = 111;
+		p2shHeader = 196;
 		dumpedPrivateKeyHeader = addressHeader + 128;
 		acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
-		port = 9901;
-		packetMagic = 0xe6e8e9e5;
-		genesisBlock.setDifficultyTarget(0x1d00ffffL);//todo bnProofOfWorkLimit.GetCompact();
+		port = 9903;
+		packetMagic = 0xcbf2c0ef;
+		genesisBlock.setDifficultyTarget(0x1d00ffffL);// todo
+														// bnProofOfWorkLimit.GetCompact();
 		genesisBlock.setTime(1345084287L);
 		genesisBlock.setNonce(2179302059l);
 		id = ID_MAINNET;
 		subsidyDecreaseBlockCount = 210000;
 		spendableCoinbaseDepth = 100;
-		alertSigningKey = Hex.decode("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab");//SunnyKing
+		alertSigningKey = Hex
+				.decode("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab");// SunnyKing
 		String genesisHash = genesisBlock.getHashAsString();
 		if (false)
-			checkState(genesisHash.equals("4642ce76d9cd7301b57bb53cc66de7cfb898ad5a3ad3635a472608ffaf35110b"),
+			checkState(
+					genesisHash
+							.equals("4642ce76d9cd7301b57bb53cc66de7cfb898ad5a3ad3635a472608ffaf35110b"),
 					genesisHash);
 
-		// This contains (at a minimum) the blocks which are not BIP30 compliant. BIP30 changed how duplicate
-		// transactions are handled. Duplicated transactions could occur in the case where a coinbase had the same
-		// extraNonce and the same outputs but appeared at different heights, and greatly complicated re-org handling.
+		// This contains (at a minimum) the blocks which are not BIP30
+		// compliant. BIP30 changed how duplicate
+		// transactions are handled. Duplicated transactions could occur in the
+		// case where a coinbase had the same
+		// extraNonce and the same outputs but appeared at different heights,
+		// and greatly complicated re-org handling.
 		// Having these here simplifies block connection logic considerably.
 		/*
 		checkpoints.put(91722, new Sha256Hash("00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e"));
@@ -46,11 +53,11 @@ public class PPCNetParams extends NetworkParameters {
 		dnsSeeds = new String[] { "seed.ppcoin.net", "tnseed.ppcoin.net" };
 	}
 
-	private static PPCNetParams instance;
+	private static PPCTestParams instance;
 
-	public static synchronized PPCNetParams get() {
+	public static synchronized PPCTestParams get() {
 		if (instance == null) {
-			instance = new PPCNetParams();
+			instance = new PPCTestParams();
 		}
 		return instance;
 	}
