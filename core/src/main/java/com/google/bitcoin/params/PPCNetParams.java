@@ -29,7 +29,7 @@ public class PPCNetParams extends NetworkParameters {
 		alertSigningKey = Hex.decode("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab");//SunnyKing
 		String genesisHash = genesisBlock.getHashAsString();
 		if (false)
-			checkState(genesisHash.equals("4642ce76d9cd7301b57bb53cc66de7cfb898ad5a3ad3635a472608ffaf35110b"),
+			checkState(genesisHash.equals("0000000032fe677166d54963b62a4677d8957e87c508eaa4fd7eb1c880cd27e3"),
 					genesisHash);
 
 		// This contains (at a minimum) the blocks which are not BIP30 compliant. BIP30 changed how duplicate

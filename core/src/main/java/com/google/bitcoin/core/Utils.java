@@ -335,7 +335,7 @@ public class Utils {
         boolean negative = value.signum() < 0;
         if (negative)
             value = value.negate();
-        BigDecimal bd = new BigDecimal(value, 8);
+        BigDecimal bd = new BigDecimal(value, 6);
         String formatted = bd.toPlainString();   // Don't use scientific notation.
         int decimalPoint = formatted.indexOf(".");
         // Drop unnecessary zeros from the end.
