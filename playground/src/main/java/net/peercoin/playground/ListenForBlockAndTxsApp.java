@@ -6,6 +6,8 @@ import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.spongycastle.util.encoders.Hex;
+
 import com.google.bitcoin.core.AbstractPeerEventListener;
 import com.google.bitcoin.core.Block;
 import com.google.bitcoin.core.InventoryItem;
@@ -74,7 +76,23 @@ public class ListenForBlockAndTxsApp {
 			Thread.sleep(500);
 
 		// get one block
-		Block block108xxx = group
+		Block block;
+
+		block = group
+				.getConnectedPeers()
+				.get(0)
+				.getBlock(
+						new Sha256Hash(
+								testnet ? "00000001f757bb737f6596503e17cd17b0658ce630cc727c0cca81aec47c9f06"
+										: "00000001f757bb737f6596503e17cd17b0658ce630cc727c0cca81aec47c9f06"))
+				.get();
+		System.out.println("genesis " + block);
+		String genesisHex = Hex.toHexString(block.bitcoinSerialize());
+		System.out.println("genesisHex "+genesisHex);
+		block = new Block(params, Hex.decode(genesisHex));
+		System.out.println("parsed genesis " + block);
+
+		block = group
 				.getConnectedPeers()
 				.get(0)
 				.getBlock(
@@ -82,7 +100,7 @@ public class ListenForBlockAndTxsApp {
 								testnet ? "0000000bbf7e87ac4089f6ec268ed8b3524d00e735d7ee3c5fb7b410ab240a42"
 										: "3804075256ee3854d8760f6a6db6ec735adcd57cd05d5d0a1b861ab5a108b5aa"))
 				.get();
-		System.out.println("block 108xxx " + block108xxx);
+		System.out.println("block 108xxx " + block);
 
 		System.in.read();
 

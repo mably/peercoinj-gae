@@ -13,5 +13,18 @@
 			<artifactId>peercoinj</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.googlecode</groupId>
+			<artifactId>jsonrpc4j</artifactId>
+			<version>0.28</version>
+		</dependency>
 	</dependencies>
+	<repositories>
+		<repository>
+			<id>jsonrpc4j-webdav-maven-repo</id>
+			<name>jsonrpc4j maven repository</name>
+			<url>http://jsonrpc4j.googlecode.com/svn/maven/repo/</url>
+			<layout>default</layout>
+		</repository>
+	</repositories>
 </project>
