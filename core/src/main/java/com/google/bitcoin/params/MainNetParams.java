@@ -44,8 +44,8 @@ public class MainNetParams extends NetworkParameters {
         subsidyDecreaseBlockCount = 210000;
         spendableCoinbaseDepth = 100;
         String genesisHash = genesisBlock.getHashAsString();
-        checkState(genesisHash.equals("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"),
-                genesisHash);
+        
+        //TODO modified Transaction.bitcoinSerialize checkState(genesisHash.equals("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"), genesisHash);
 
         // This contains (at a minimum) the blocks which are not BIP30 compliant. BIP30 changed how duplicate
         // transactions are handled. Duplicated transactions could occur in the case where a coinbase had the same

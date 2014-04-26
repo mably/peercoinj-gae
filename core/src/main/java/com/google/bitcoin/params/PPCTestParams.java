@@ -33,7 +33,7 @@ public class PPCTestParams extends NetworkParameters {
 		if (false)
 			checkState(
 					genesisHash
-							.equals("4642ce76d9cd7301b57bb53cc66de7cfb898ad5a3ad3635a472608ffaf35110b"),
+							.equals("00000001f757bb737f6596503e17cd17b0658ce630cc727c0cca81aec47c9f06"),
 					genesisHash);
 
 		// This contains (at a minimum) the blocks which are not BIP30

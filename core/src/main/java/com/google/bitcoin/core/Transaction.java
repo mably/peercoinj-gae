@@ -24,11 +24,13 @@ import com.google.bitcoin.script.ScriptOpCodes;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import javax.annotation.Nullable;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.text.ParseException;
@@ -94,12 +96,12 @@ public class Transaction extends ChildMessage implements Serializable {
     public static final BigInteger MIN_NONDUST_OUTPUT = BigInteger.valueOf(5460);
 
     // These are serialized in both bitcoin and java serialization.
-    private long version;
-    private long time;//Peercoin
-    private ArrayList<TransactionInput> inputs;
-    private ArrayList<TransactionOutput> outputs;
+    protected long version;
+    protected long time;//Peercoin
+    protected ArrayList<TransactionInput> inputs;
+    protected ArrayList<TransactionOutput> outputs;
 
-    private long lockTime;
+    protected long lockTime;
 
     // This is either the time the transaction was broadcast as measured from the local clock, or the time from the
     // block in which it was included. Note that this can be changed by re-orgs so the wallet may update this field.
@@ -658,7 +660,7 @@ public class Transaction extends ChildMessage implements Serializable {
                 s.append(scriptPubKey);
                 s.append(" ");
                 s.append(bitcoinValueToFriendlyString(out.getValue()));
-                s.append(" BTC");
+                s.append(" PPC");
                 if (!out.isAvailableForSpending()) {
                     s.append(" Spent");
                 }
@@ -1078,6 +1080,7 @@ public class Transaction extends ChildMessage implements Serializable {
     @Override
     protected void bitcoinSerializeToStream(OutputStream stream) throws IOException {
         uint32ToByteStreamLE(version, stream);
+		uint32ToByteStreamLE(time, stream);// Peercion
         stream.write(new VarInt(inputs.size()).encode());
         for (TransactionInput in : inputs)
             in.bitcoinSerialize(stream);
@@ -1294,4 +1297,13 @@ public class Transaction extends ChildMessage implements Serializable {
     public void setPurpose(Purpose purpose) {
         this.purpose = purpose;
     }
+    
+    // Peercoin
+    public void setTime(long time) {
+		this.time = time;
+	}
+    
+    public long getTime() {
+		return time;
+	}
 }
