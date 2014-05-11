@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import net.peercoin.playground.rpc.Rpc.ValidateAddress;
-import ppc.spongy.Hex;
+import net.peercoin.playground.spongy.Hex;
 
 import com.google.common.reflect.TypeToken;
 import com.googlecode.jsonrpc4j.Base64;
