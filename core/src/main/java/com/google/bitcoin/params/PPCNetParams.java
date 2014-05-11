@@ -20,21 +20,28 @@ public class PPCNetParams extends NetworkParameters {
 		acceptableAddressCodes = new int[] { addressHeader, p2shHeader };
 		port = 9901;
 		packetMagic = 0xe6e8e9e5;
-		genesisBlock.setDifficultyTarget(0x1d00ffffL);//todo bnProofOfWorkLimit.GetCompact();
+		genesisBlock.setDifficultyTarget(0x1d00ffffL);// todo
+														// bnProofOfWorkLimit.GetCompact();
 		genesisBlock.setTime(1345084287L);
 		genesisBlock.setNonce(2179302059l);
 		id = ID_MAINNET;
 		subsidyDecreaseBlockCount = 210000;
 		spendableCoinbaseDepth = 100;
-		alertSigningKey = Hex.decode("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab");//SunnyKing
+		alertSigningKey = Hex
+				.decode("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab");// SunnyKing
 		String genesisHash = genesisBlock.getHashAsString();
 		if (false)
-			checkState(genesisHash.equals("0000000032fe677166d54963b62a4677d8957e87c508eaa4fd7eb1c880cd27e3"),
+			checkState(
+					genesisHash
+							.equals("0000000032fe677166d54963b62a4677d8957e87c508eaa4fd7eb1c880cd27e3"),
 					genesisHash);
 
-		// This contains (at a minimum) the blocks which are not BIP30 compliant. BIP30 changed how duplicate
-		// transactions are handled. Duplicated transactions could occur in the case where a coinbase had the same
-		// extraNonce and the same outputs but appeared at different heights, and greatly complicated re-org handling.
+		// This contains (at a minimum) the blocks which are not BIP30
+		// compliant. BIP30 changed how duplicate
+		// transactions are handled. Duplicated transactions could occur in the
+		// case where a coinbase had the same
+		// extraNonce and the same outputs but appeared at different heights,
+		// and greatly complicated re-org handling.
 		// Having these here simplifies block connection logic considerably.
 		/*
 		checkpoints.put(91722, new Sha256Hash("00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e"));
@@ -43,7 +50,7 @@ public class PPCNetParams extends NetworkParameters {
 		checkpoints.put(91880, new Sha256Hash("00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721"));
 		checkpoints.put(200000, new Sha256Hash("000000000000034a7dedef4a161fa058a2d67a173a90155f3a2fe6fc132e0ebf"));
 		*/
-		dnsSeeds = new String[] { "seed.ppcoin.net", "tnseed.ppcoin.net" };
+		dnsSeeds = new String[] { "seed.ppcoin.net" };
 	}
 
 	private static PPCNetParams instance;

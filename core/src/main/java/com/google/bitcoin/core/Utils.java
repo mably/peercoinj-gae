@@ -66,7 +66,7 @@ public class Utils {
      * The term nanocoin is very misleading, though, because there are only 100 million
      * of them in a coin (whereas one would expect 1 billion.
      */
-    public static final BigInteger COIN = new BigInteger("100000000", 10);
+    public static final BigInteger COIN = new BigInteger("1000000", 10);
 
     /**
      * How many "nanocoins" there are in 0.01 BitCoins.
@@ -75,7 +75,7 @@ public class Utils {
      * The term nanocoin is very misleading, though, because there are only 100 million
      * of them in a coin (whereas one would expect 1 billion).
      */
-    public static final BigInteger CENT = new BigInteger("1000000", 10);
+    public static final BigInteger CENT = new BigInteger("10000", 10);
     private static BlockingQueue<Boolean> mockSleepQueue;
 
     /**
@@ -120,7 +120,7 @@ public class Utils {
      * @throws ArithmeticException if you try to specify fractional nanocoins, or nanocoins out of range.
      */
     public static BigInteger toNanoCoins(String coins) {
-        BigInteger bigint = new BigDecimal(coins).movePointRight(8).toBigIntegerExact();
+        BigInteger bigint = new BigDecimal(coins).movePointRight(6).toBigIntegerExact();
         if (bigint.signum() < 0)
             throw new ArithmeticException("Negative coins specified");
         if (bigint.compareTo(NetworkParameters.MAX_MONEY) > 0)

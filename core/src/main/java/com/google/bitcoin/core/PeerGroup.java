@@ -251,6 +251,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
     public static final int DEFAULT_CONNECT_TIMEOUT_MILLIS = 5000;
     private volatile int vConnectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT_MILLIS;
 
+    private boolean reusePeerAfterFailure = true;
+    
     /**
      * Creates a PeerGroup with the given parameters. No chain is provided so this node will report its chain height
      * as zero to other peers. This constructor is useful if you just want to explore the network but aren't interested
@@ -1186,7 +1188,8 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             //TODO: if network failure is suspected, do not backoff peer
             backoffMap.get(address).trackFailure();
             // Put back on inactive list
-            inactives.offer(address);
+            if(reusePeerAfterFailure)
+            	inactives.offer(address);
 
             if (numPeers < getMaxConnections()) {
                 triggerConnections();
@@ -1516,4 +1519,12 @@ public class PeerGroup extends AbstractExecutionThreadService implements Transac
             lock.unlock();
         }
     }
+    
+    public boolean isReusePeerAfterFailure() {
+		return reusePeerAfterFailure;
+	}
+    
+    public void setReusePeerAfterFailure(boolean reusePeerAfterFailure) {
+		this.reusePeerAfterFailure = reusePeerAfterFailure;
+	}
 }

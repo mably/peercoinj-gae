@@ -25,13 +25,30 @@ public class Rpc {
 	}
 
 	public static class Transaction {
+		public String account, address, category, blockhash, txid;
+		public long time;
+		public int confirmations, blockindex;
+		public double amount, fee;
+
+		@Override
+		public String toString() {
+			return "Transaction [account=" + account + ", address=" + address
+					+ ", category=" + category + ", blockhash=" + blockhash
+					+ ", txid=" + txid + ", time=" + time + ", confirmations="
+					+ confirmations + ", blockindex=" + blockindex
+					+ ", amount=" + amount + ", fee=" + fee + "]";
+		}
+
+	}
+
+	public static class TransactionToCreate {
 		public static class Input {
 			public String txid;
 			public long vout;
 
 		}
 
-		List<Input> inputs = new ArrayList<Transaction.Input>();
+		List<Input> inputs = new ArrayList<TransactionToCreate.Input>();
 		Map<String, Double> outputs = new LinkedHashMap<String, Double>();
 
 		public Object[] toArgs() {
@@ -55,5 +72,29 @@ public class Rpc {
 	public static class SigningResult {
 		public String hex;
 		public boolean complete;
+	}
+
+	public static class PubImportResult {
+		public boolean added;
+		public String address, account;
+
+		@Override
+		public String toString() {
+			return "PubImportResult [added=" + added + ", address=" + address
+					+ ", account=" + account + "]";
+		}
+	}
+
+	public static class ValidateAddress {
+		public boolean isvalid, ismine, isscript, iscompressed;
+		public String address, pubkey, account;
+
+		@Override
+		public String toString() {
+			return "ValidateAddress [isvalid=" + isvalid + ", ismine=" + ismine
+					+ ", isscript=" + isscript + ", iscompressed="
+					+ iscompressed + ", address=" + address + ", pubkey="
+					+ pubkey + ", account=" + account + "]";
+		}
 	}
 }
