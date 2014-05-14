@@ -97,15 +97,6 @@ public class RpcClient {
 		}
 	}
 
-	public Double getBalance(String account, int minconf) {
-		try {
-			return client.invoke(m("getbalance"), new Object[] { account,
-					minconf }, Double.class);
-		} catch (Throwable e) {
-			throw new RuntimeException(e);
-		}
-	}
-
 	public String sendToAddress(String address, double amount, String comment,
 			String commentTo) {
 		Object[] args = new Object[comment != null ? commentTo != null ? 4 : 3
@@ -157,6 +148,24 @@ public class RpcClient {
 		try {
 			return client.invoke(m("sendrawtransaction"),
 					new Object[] { address }, ValidateAddress.class);
+		} catch (Throwable e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public void pubScan() {
+		try {
+			client.invoke("pubscan", new Object[] {});
+		} catch (Throwable e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public Double getBalance(String account, int minconf) {
+		try {
+			return client.invoke(m("getbalance"),
+					account != null ? new Object[] { account, minconf }
+							: new Object[] {}, Double.class);
 		} catch (Throwable e) {
 			throw new RuntimeException(e);
 		}
