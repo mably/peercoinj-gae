@@ -4,22 +4,19 @@ import java.io.File;
 import java.io.FileReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.security.Security;
 import java.util.Properties;
 
 import net.peercoin.playground.rpc.Rpc;
 import net.peercoin.playground.rpc.RpcClient;
 import net.peercoin.playground.spongy.Hex;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
 import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.Base58;
 import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Transaction.SigHash;
 import com.google.bitcoin.core.TransactionInput;
 import com.google.bitcoin.core.Utils;
+import com.google.bitcoin.crypto.DeterministicKey;
 import com.google.bitcoin.crypto.TransactionSignature;
 import com.google.bitcoin.params.PPCNetParams;
 import com.google.bitcoin.params.PPCTestParams;
@@ -48,12 +45,9 @@ public class Bip0032PublicWalletPingPongApp {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Security.addProvider(new BouncyCastleProvider());
-		String encryptedWallet = "R7MfNN2wpZ2qScd49XFpqEqyRg1pC4hZqLW43PmJVVpCVrq25h947NTSqWHYCee7Z45p6scsczwdBdMvh6A8xd6U7E9u1JK9Mdy5endq9Qn7vZJENZR7JPTNDojVvMfKc6Eyv3UimygqQ6mPhA6Pvx4n4JKRPEoftgbdLDd9NQjFCL5";
-		String walletPassphrase = "pass0";
+
 		String decryptedWallet = "xprv9s21ZrQH143K2yUwSoENrPfNQTsezKJRpkmcCHPScNnvzvWorjW5kNA4wbhcqw2ZRUku6QNYFavHWCBE4GEWYDC6GSYLM2Aeo1HzVLevoZs";
 
-		boolean useEncrypted = true;
 		boolean prodNet = false;
 		double txFee = 0.01;
 		BigInteger txFeeMicro = BigDecimal.valueOf(txFee).movePointRight(6)
@@ -70,18 +64,14 @@ public class Bip0032PublicWalletPingPongApp {
 		// switch wallet to public mode
 		client.setMainWallet(false);
 
-		ExtendedKey key;
-		if (useEncrypted) {
-			key = ExtendedKey.createFromPassphrase(walletPassphrase,
-					Base58.decode(encryptedWallet));
-		} else {
-			key = ExtendedKey.parse(decryptedWallet);
-		}
-		String address = key.getMaster().toAddress(params).toString();
+		DeterministicKey key;
+		key = DeterministicKey.deserializeB58(null, decryptedWallet);
+
+		String address = key.toAddress(params).toString();
 		String account = "hd_" + address;
 
 		Rpc.PubImportResult importResult = client.pubImportKey(
-				Hex.toHexString(key.getMaster().getPubKey()), account, false);
+				Hex.toHexString(key.getPubKey()), account, false);
 		System.out.println(importResult);
 		assertTrue(address.equals(importResult.address));
 		// TODO if (!importResult.account.equals(account))
@@ -154,12 +144,12 @@ public class Bip0032PublicWalletPingPongApp {
 			assertTrue(pongSend.compareTo(txFeeMicro) > 0);
 			pongTx.getOutput(0).setValue(pongSend);
 			// create signature
-			TransactionSignature sig = pongTx.calculateSignature(0,
-					key.getMaster(), tx.getOutput(outputNum).getScriptPubKey(),
-					SigHash.ALL, false);
+			TransactionSignature sig = pongTx
+					.calculateSignature(0, key, tx.getOutput(outputNum)
+							.getScriptPubKey(), SigHash.ALL, false);
 			// set signature
 			pongTx.getInput(0).setScriptSig(
-					ScriptBuilder.createInputScript(sig, key.getMaster()));
+					ScriptBuilder.createInputScript(sig, key));
 			serialized = pongTx.bitcoinSerialize();
 			pongRequiredFee = txFeeMicro.multiply(BigInteger
 					.valueOf(serialized.length / 1000 + 1));

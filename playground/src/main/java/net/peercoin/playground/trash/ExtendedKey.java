@@ -1,4 +1,19 @@
-package net.peercoin.playground.spongy;
+/*
+* Copyright 2013 bits of proof zrt.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+package net.peercoin.playground.trash;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,19 +34,24 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.spongycastle.asn1.sec.SECNamedCurves;
-import org.spongycastle.asn1.x9.X9ECParameters;
-import org.spongycastle.crypto.generators.SCrypt;
-import org.spongycastle.math.ec.ECPoint;
-import org.spongycastle.util.Arrays;
+import org.bouncycastle.asn1.sec.SECNamedCurves;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.generators.SCrypt;
+import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.util.Arrays;
 
 import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.Base58;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Utils;
 
-public class ExtendedKey {
-	public static class ValidationException extends Exception {
+/*
+ported from BoP
+https://github.com/bitsofproof/supernode/blob/1.1/api/src/main/java/com/bitsofproof/supernode/api/ExtendedKey.java
+*/
+
+class ExtendedKey {
+	public static class ValidationException extends RuntimeException {
 
 		public ValidationException(String message) {
 			super(message);
@@ -45,7 +65,7 @@ public class ExtendedKey {
 
 	}
 
-	private static final String SEC_PROVIDER = "SC";
+	private static final String SEC_PROVIDER = "BC";
 	private static final SecureRandom rnd = new SecureRandom();
 	private static final X9ECParameters curve = SECNamedCurves
 			.getByName("secp256k1");
@@ -58,6 +78,8 @@ public class ExtendedKey {
 
 	private static final byte[] BITCOIN_SEED = "Bitcoin seed".getBytes();
 
+	private Mac HmacSHA512;
+
 	public static ExtendedKey createFromPassphrase(String passphrase,
 			byte[] encrypted) throws ValidationException {
 		try {
@@ -66,13 +88,14 @@ public class ExtendedKey {
 			SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
 			if (encrypted.length == 32) {
 				// asssume encrypted is seed
-				Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", SEC_PROVIDER);
+				Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding",
+						SEC_PROVIDER);
 				cipher.init(Cipher.DECRYPT_MODE, keyspec);
 				return create(cipher.doFinal(encrypted));
 			} else {
 				// assume encrypted serialization of a key
-				Cipher cipher = Cipher
-						.getInstance("AES/CBC/PKCS5Padding", SEC_PROVIDER);
+				Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding",
+						SEC_PROVIDER);
 				byte[] iv = Arrays.copyOfRange(encrypted, 0, 16);
 				byte[] data = Arrays.copyOfRange(encrypted, 16,
 						encrypted.length);
@@ -105,7 +128,8 @@ public class ExtendedKey {
 			byte[] key = SCrypt.generate(passphrase.getBytes("UTF-8"),
 					BITCOIN_SEED, 16384, 8, 8, 32);
 			SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
-			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", SEC_PROVIDER);
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding",
+					SEC_PROVIDER);
 			cipher.init(Cipher.ENCRYPT_MODE, keyspec);
 			byte[] iv = cipher.getIV();
 			byte[] c = cipher.doFinal(serialize(production).getBytes());
@@ -215,9 +239,14 @@ public class ExtendedKey {
 				throw new ValidationException(
 						"need private key for private generation");
 			}
-			Mac mac = Mac.getInstance("HmacSHA512", SEC_PROVIDER);
-			SecretKey key = new SecretKeySpec(chainCode, "HmacSHA512");
-			mac.init(key);
+
+			Mac HmacSHA512 = null;
+			if (HmacSHA512 == null) {
+				HmacSHA512 = Mac.getInstance("HmacSHA512", SEC_PROVIDER);
+				SecretKey key = new SecretKeySpec(chainCode, "HmacSHA512");
+				HmacSHA512.init(key);
+			} else
+				HmacSHA512.reset();
 
 			byte[] extended;
 			byte[] pub = master.getPubKey();
@@ -237,7 +266,7 @@ public class ExtendedKey {
 				extended[priv.length + 3] = (byte) ((sequence >>> 8) & 0xff);
 				extended[priv.length + 4] = (byte) (sequence & 0xff);
 			}
-			byte[] lr = mac.doFinal(extended);
+			byte[] lr = HmacSHA512.doFinal(extended);
 			byte[] l = Arrays.copyOfRange(lr, 0, 32);
 			byte[] r = Arrays.copyOfRange(lr, 32, 64);
 
@@ -370,11 +399,11 @@ public class ExtendedKey {
 	}
 
 	public static String toBase58WithChecksum(byte[] bytes) {
-		byte[] addressBytes = new byte[bytes.length + 4];
-		System.arraycopy(bytes, 0, addressBytes, 0, bytes.length);
-		byte[] check = Utils.doubleDigest(addressBytes, 0, bytes.length + 1);
-		System.arraycopy(check, 0, addressBytes, bytes.length, 4);
-		return Base58.encode(addressBytes);
+		byte[] cs = Utils.doubleDigest(bytes);
+		byte[] extended = new byte[bytes.length + 4];
+		System.arraycopy(bytes, 0, extended, 0, bytes.length);
+		System.arraycopy(cs, 0, extended, bytes.length, 4);
+		return Base58.encode(extended);
 	}
 
 	public static byte[] fromBase58WithChecksum(String s)
