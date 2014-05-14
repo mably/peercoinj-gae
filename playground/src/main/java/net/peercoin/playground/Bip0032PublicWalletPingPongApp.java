@@ -26,7 +26,7 @@ import com.google.bitcoin.params.PPCTestParams;
 import com.google.bitcoin.script.ScriptBuilder;
 
 public class Bip0032PublicWalletPingPongApp {
-	static RpcClient createClient(boolean prodNet) throws Exception {
+	public static RpcClient createClient(boolean prodNet) throws Exception {
 		File cfgFile = new File(System.getProperty("user.home"), ".ppcoin");
 		cfgFile = new File(cfgFile, "ppcoin.conf");
 		Properties cfg = new Properties();
