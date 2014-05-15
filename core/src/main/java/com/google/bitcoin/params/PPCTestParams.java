@@ -24,7 +24,7 @@ public class PPCTestParams extends NetworkParameters {
 														// bnProofOfWorkLimit.GetCompact();
 		genesisBlock.setTime(1345084287L);
 		genesisBlock.setNonce(2179302059l);
-		id = ID_MAINNET;
+		id = "net.peercoint.testnet";
 		subsidyDecreaseBlockCount = 210000;
 		spendableCoinbaseDepth = 100;
 		alertSigningKey = Hex
