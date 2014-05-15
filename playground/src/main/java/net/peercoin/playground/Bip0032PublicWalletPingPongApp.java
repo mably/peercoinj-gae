@@ -23,7 +23,7 @@ import com.google.bitcoin.params.PPCTestParams;
 import com.google.bitcoin.script.ScriptBuilder;
 
 public class Bip0032PublicWalletPingPongApp {
-	public static RpcClient createClient(boolean prodNet) throws Exception {
+	public static RpcClient createRpcClient(boolean prodNet) throws Exception {
 		File cfgFile = new File(System.getProperty("user.home"), ".ppcoin");
 		cfgFile = new File(cfgFile, "ppcoin.conf");
 		Properties cfg = new Properties();
@@ -57,7 +57,7 @@ public class Bip0032PublicWalletPingPongApp {
 
 		NetworkParameters params = prodNet ? PPCNetParams.get() : PPCTestParams
 				.get();
-		RpcClient client = createClient(prodNet);
+		RpcClient client = createRpcClient(prodNet);
 
 		double mainWalletBalance = client.getBalance("*", 1);
 		assertTrue(mainWalletBalance > toSend + txFee);
