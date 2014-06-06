@@ -133,13 +133,14 @@ public class Threading {
         // from that point onwards.
         throwOnLockCycles();
 
-        USER_THREAD = new UserThread();
+        //USER_THREAD = new UserThread();
         SAME_THREAD = new Executor() {
             @Override
             public void execute(@Nonnull Runnable runnable) {
                 runnable.run();
             }
         };
+        USER_THREAD = SAME_THREAD;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -25,9 +25,9 @@
         <version>0.12-SNAPSHOT</version>
     </parent>
 
-    <artifactId>peercoinj</artifactId>
+    <artifactId>peercoinj-gae</artifactId>
 
-    <name>peercoinj</name>
+    <name>peercoinj-gae</name>
     <description>A Java Bitcoin library</description>
 
     <packaging>jar</packaging>

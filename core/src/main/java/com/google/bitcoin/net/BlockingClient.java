@@ -66,9 +66,9 @@ public class BlockingClient implements MessageWriteTarget {
         dbuf = ByteBuffer.allocateDirect(Math.min(Math.max(parser.getMaxMessageSize(), BUFFER_SIZE_LOWER_BOUND), BUFFER_SIZE_UPPER_BOUND));
         parser.setWriteTarget(this);
         socket = socketFactory.createSocket();
-        Thread t = new Thread() {
-            @Override
-            public void run() {
+        //Thread t = new Thread() {
+        //    @Override
+        //    public void run() {
                 if (clientSet != null)
                     clientSet.add(BlockingClient.this);
                 try {
@@ -107,11 +107,11 @@ public class BlockingClient implements MessageWriteTarget {
                         clientSet.remove(BlockingClient.this);
                     parser.connectionClosed();
                 }
-            }
-        };
-        t.setName("BlockingClient network thread for " + serverAddress);
-        t.setDaemon(true);
-        t.start();
+        //    }
+        //};
+        //t.setName("BlockingClient network thread for " + serverAddress);
+        //t.setDaemon(true);
+        //t.start();
     }
 
     /**
