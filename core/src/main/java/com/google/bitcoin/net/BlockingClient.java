@@ -20,11 +20,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.net.SocketFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 
@@ -95,8 +97,13 @@ public class BlockingClient implements MessageWriteTarget {
                         dbuf.compact();
                     }
                 } catch (Exception e) {
-                    if (!vCloseRequested)
+                    if (!vCloseRequested) {
                         log.error("Error trying to open/read from connection: " + serverAddress, e);
+	                    if ((e instanceof SocketTimeoutException)
+	                    		|| e.getMessage().contains("timed out")) {
+	                    	parser.timeoutOccurred();
+	                    }
+                    }
                 } finally {
                     try {
                         socket.close();

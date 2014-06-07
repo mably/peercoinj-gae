@@ -76,7 +76,7 @@ public class TestWithNetworkConnections {
     public void setUp() throws Exception {
         setUp(new MemoryBlockStore(UnitTestParams.get()));
     }
-    
+
     public void setUp(BlockStore blockStore) throws Exception {
         BriefLogFormatter.init();
 
@@ -118,6 +118,10 @@ public class TestWithNetworkConnections {
                     public void connectionOpened() {
                         newPeerWriteTargetQueue.offer(this);
                     }
+
+					@Override
+					public void timeoutOccurred() {
+					}
                 };
             }
         }, new InetSocketAddress("127.0.0.1", 2000 + i));

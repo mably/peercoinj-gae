@@ -249,6 +249,19 @@ public class Peer extends PeerSocketHandler {
     }
 
     @Override
+	public void timeoutOccurred() {
+        for (final PeerListenerRegistration registration : eventListeners) {
+            registration.executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    registration.listener.onPeerTimeout(Peer.this, 0);
+                }
+            });
+        }
+		super.timeoutOccurred();
+	}
+
+	@Override
     public void connectionClosed() {
         for (final PeerListenerRegistration registration : eventListeners) {
             if (registration.callOnDisconnect)

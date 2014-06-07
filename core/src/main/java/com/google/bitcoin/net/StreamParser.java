@@ -23,6 +23,9 @@ import java.nio.ByteBuffer;
  * data streams.
  */
 public interface StreamParser {
+    /** Called when the connection socket times out */
+    void timeoutOccurred();
+
     /** Called when the connection socket is closed */
     void connectionClosed();
 

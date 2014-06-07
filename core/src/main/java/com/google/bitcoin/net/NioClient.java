@@ -41,7 +41,7 @@ public class NioClient implements MessageWriteTarget {
         }
 
         @Override
-        protected synchronized void timeoutOccurred() {
+        public synchronized void timeoutOccurred() {
             upstreamParser.connectionClosed();
             closeOnOpen = true;
         }

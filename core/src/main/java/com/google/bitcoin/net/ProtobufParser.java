@@ -115,7 +115,7 @@ public class ProtobufParser<MessageType extends MessageLite> extends AbstractTim
     }
 
     @Override
-    protected void timeoutOccurred() {
+    public void timeoutOccurred() {
         log.warn("Timeout occurred for " + handler);
         closeConnection();
     }
