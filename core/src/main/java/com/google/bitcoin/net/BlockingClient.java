@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Set;
+import java.util.concurrent.ThreadFactory;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -63,6 +64,24 @@ public class BlockingClient implements MessageWriteTarget {
      */
     public BlockingClient(final SocketAddress serverAddress, final StreamParser parser,
                           final int connectTimeoutMillis, final SocketFactory socketFactory, @Nullable final Set<BlockingClient> clientSet) throws IOException {
+    	this(getDefaultThreadFactory(serverAddress), serverAddress, parser, connectTimeoutMillis, socketFactory, clientSet);
+    }
+
+	/**
+     * <p>Creates a new client to the given server address using the given {@link StreamParser} to decode the data.
+     * The given parser <b>MUST</b> be unique to this object. This does not block while waiting for the connection to
+     * open, but will call either the {@link StreamParser#connectionOpened()} or
+     * {@link StreamParser#connectionClosed()} callback on the created network event processing thread.</p>
+     *
+     * @param connectTimeoutMillis The connect timeout set on the connection (in milliseconds). 0 is interpreted as no
+     *                             timeout.
+     * @param socketFactory An object that creates {@link Socket} objects on demand, which may be customised to control
+     *                      how this client connects to the internet. If not sure, use SocketFactory.getDefault()
+     * @param clientSet A set which this object will add itself to after initialization, and then remove itself from
+     */
+    public BlockingClient(ThreadFactory threadFactory, final SocketAddress serverAddress, final StreamParser parser,
+                          final int connectTimeoutMillis, final SocketFactory socketFactory, @Nullable final Set<BlockingClient> clientSet) throws IOException {
+
         // Try to fit at least one message in the network buffer, but place an upper and lower limit on its size to make
         // sure it doesnt get too large or have to call read too often.
         dbuf = ByteBuffer.allocateDirect(Math.min(Math.max(parser.getMaxMessageSize(), BUFFER_SIZE_LOWER_BOUND), BUFFER_SIZE_UPPER_BOUND));
@@ -70,7 +89,12 @@ public class BlockingClient implements MessageWriteTarget {
         socket = socketFactory.createSocket();
         //Thread t = new Thread() {
         //    @Override
-        //    public void run() {
+        if (threadFactory == null) {
+        	threadFactory = getDefaultThreadFactory(serverAddress);
+        }
+        Thread t = threadFactory.newThread(new Runnable() {
+			@Override
+			public void run() {
                 if (clientSet != null)
                     clientSet.add(BlockingClient.this);
                 try {
@@ -114,11 +138,11 @@ public class BlockingClient implements MessageWriteTarget {
                         clientSet.remove(BlockingClient.this);
                     parser.connectionClosed();
                 }
-        //    }
-        //};
+            }
+        });
         //t.setName("BlockingClient network thread for " + serverAddress);
         //t.setDaemon(true);
-        //t.start();
+        t.start();
     }
 
     /**
@@ -146,5 +170,22 @@ public class BlockingClient implements MessageWriteTarget {
             closeConnection();
             throw e;
         }
+    }
+
+    /**
+     * @param serverAddress
+     * @return
+     */
+    public static ThreadFactory getDefaultThreadFactory(
+    		final SocketAddress serverAddress) {
+    	return new ThreadFactory() {
+    		@Override
+    		public Thread newThread(Runnable r) {
+    			Thread t = new Thread(r);
+    	        t.setName("BlockingClient network thread for " + serverAddress);
+    	        t.setDaemon(true);
+    	        return t;
+    		}
+    	};
     }
 }
